@@ -7,6 +7,7 @@ import FeedItem from './components/FeedItem';
 import LogBox from './components/LogBox';
 import Toast from './components/Toast';
 import PdfModal from './components/PdfModal';
+import { extractToSection } from './utils/pdfReader';
 import './App.css';
 
 // ---------- Configuration ----------
@@ -43,8 +44,9 @@ function App() {
   const [newCount, setNewCount] = useState(0);
   const [checksRun, setChecksRun] = useState(0);
   const [logs, setLogs] = useState([]);
+  const [toSearchTerms, setToSearchTerms] = useState(['All Alternative Investment Funds (AIFs)']);
   const [toast, setToast] = useState(null);
-  const [modal, setModal] = useState({ 
+  const [modal, setModal] = useState({
     isOpen: false, item: null, blobUrl: null, error: null, loading: false, loadingText: '' 
   });
   
@@ -167,11 +169,10 @@ function App() {
   };
 
   const resolvePdfUrl = async (detailLink) => {
-    setModal(prev => ({ ...prev, loadingText: 'Fetching detail page...' }));
     try {
       const html = await fetchViaProxy(detailLink);
       const doc = new DOMParser().parseFromString(html, 'text/html');
-      
+
       const iframeEl = doc.querySelector('iframe[src*="sebi_data"]');
       if (iframeEl) {
         const src = iframeEl.getAttribute('src') || '';
@@ -195,7 +196,7 @@ function App() {
 
   const handleViewPdf = async (item) => {
     if (modal.blobUrl) URL.revokeObjectURL(modal.blobUrl);
-    setModal({ isOpen: true, item, blobUrl: null, error: null, loading: true, loadingText: 'Resolving PDF...' });
+    setModal({ isOpen: true, item, blobUrl: null, error: null, loading: true, loadingText: 'Fetching detail page...' });
 
     try {
       const pdfUrl = await resolvePdfUrl(item.link);
@@ -250,6 +251,51 @@ function App() {
     return 'other';
   };
 
+  // ---------- AIF Background Scanner ----------
+
+  const matchesAny = (toSection, terms) =>
+    terms.some(t => t.trim().length > 0 && toSection.toLowerCase().includes(t.trim().toLowerCase()));
+
+  const scanItemForAIF = useCallback(async (item, searchTerms) => {
+    try {
+      const pdfUrl = await resolvePdfUrl(item.link);
+      if (!pdfUrl) return;
+
+      let arrayBuffer = null;
+      for (const makeProxy of CORS_PROXIES) {
+        try {
+          const ctrl = new AbortController();
+          const timer = setTimeout(() => ctrl.abort(), 40000);
+          const res = await fetch(makeProxy(pdfUrl), { cache: 'no-store', signal: ctrl.signal });
+          clearTimeout(timer);
+          if (!res.ok) continue;
+          arrayBuffer = await res.arrayBuffer();
+          break;
+        } catch (e) { /* try next proxy */ }
+      }
+      if (!arrayBuffer) return;
+
+      const toSection = await extractToSection(arrayBuffer);
+      const matched = toSection ? matchesAny(toSection, searchTerms) : false;
+      if (matched) log(`Match found in "To": ${item.title.substring(0, 60)}`, 'new');
+      setItems(prev => prev.map(i =>
+        i.link === item.link ? { ...i, toSection: toSection || '', aifTagged: matched } : i
+      ));
+    } catch (e) { /* silent — background scan */ }
+  }, [log]);
+
+  const processNewItemsForAIF = useCallback((newItems, searchTerms) => {
+    newItems.forEach(item => scanItemForAIF(item, searchTerms));
+  }, [scanItemForAIF]);
+
+  // Re-evaluate aifTagged for already-scanned items when terms list changes
+  useEffect(() => {
+    setItems(prev => prev.map(item => {
+      if (item.toSection === undefined) return item;
+      return { ...item, aifTagged: matchesAny(item.toSection, toSearchTerms) };
+    }));
+  }, [toSearchTerms]);
+
   // ---------- Core Logic ----------
 
   const doCheck = async () => {
@@ -290,6 +336,7 @@ function App() {
           if ("Notification" in window && Notification.permission === "granted") {
             new Notification("SEBI Update", { body: `${newFound.length} new items found.` });
           }
+          processNewItemsForAIF(newFound, toSearchTerms);
         }
 
         setKnownLinks(newKnown);
@@ -360,13 +407,15 @@ function App() {
     <div className="dashboard-layout">
       {/* Sidebar Area */}
       <aside className="sidebar">
-        <Header 
-          isRunning={isRunning} 
-          onStart={startPolling} 
-          onStop={stopPolling} 
-          onCheckNow={doCheck} 
-          onClear={clearAll} 
+        <Header
+          isRunning={isRunning}
+          onStart={startPolling}
+          onStop={stopPolling}
+          onCheckNow={doCheck}
+          onClear={clearAll}
           lastChecked={checksRun > 0 ? new Date().toLocaleTimeString() : null}
+          toSearchTerms={toSearchTerms}
+          onToSearchTermsChange={setToSearchTerms}
         />
 
         <StatsRow 

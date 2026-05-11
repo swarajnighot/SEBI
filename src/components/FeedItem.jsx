@@ -23,10 +23,13 @@ function FeedItem({ item, onViewPdf }) {
   const dateStr = parseDate(item.pubDate);
 
   return (
-    <div className={`feed-item cat-${item.cat} src-${item.source} ${item.isNew ? 'is-new' : ''}`}>
+    <div className={`feed-item cat-${item.cat} src-${item.source} ${item.isNew ? 'is-new' : ''} ${item.aifTagged ? 'aif-tagged' : ''}`}>
       <div className="icon">{icon}</div>
       <div className="body">
         <div className="item-title" title={item.title}>{item.title}</div>
+        {item.aifTagged && (
+          <div className="aif-badge">⚠️ "To" section matches your search term</div>
+        )}
         <div className="meta">
           <span className="badge badge-cat">{item.cat.replace('-', ' ')}</span>
           <span className={`badge badge-source-${item.source}`}>{item.source}</span>
