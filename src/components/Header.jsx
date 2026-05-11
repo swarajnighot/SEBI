@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-function Header({ isRunning, onStart, onStop, onCheckNow, onClear, lastChecked, toSearchTerms, onToSearchTermsChange }) {
+function Header({ isRunning, onStart, onStop, onCheckNow, isCheckingNow, onClear, lastChecked, toSearchTerms, onToSearchTermsChange }) {
   const [inputVal, setInputVal] = useState('');
 
   const addTerm = () => {
@@ -27,7 +27,9 @@ function Header({ isRunning, onStart, onStop, onCheckNow, onClear, lastChecked, 
       </div>
 
       <div className="controls">
-        <button id="btn-check" onClick={onCheckNow} aria-label="Run check now">Check Now</button>
+        <button id="btn-check" onClick={onCheckNow} aria-label="Run check now" disabled={isCheckingNow}>
+          {isCheckingNow ? 'Checking...' : 'Check Now'}
+        </button>
         {isRunning
           ? <button id="btn-stop"  onClick={onStop}  aria-label="Stop monitoring">Stop</button>
           : <button id="btn-start" onClick={onStart} aria-label="Start monitoring">Start</button>

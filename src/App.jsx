@@ -48,6 +48,7 @@ function App() {
     'All registered intermediaries',
   ]);
   const [scanningCount, setScanningCount] = useState(0);
+  const [isCheckingNow, setIsCheckingNow] = useState(false);
   const [toast, setToast] = useState(null);
   const [modal, setModal] = useState({
     isOpen: false, item: null, blobUrl: null, error: null, loading: false, loadingText: '' 
@@ -359,6 +360,16 @@ function App() {
     }
   };
 
+  const handleCheckNow = async () => {
+    if (isCheckingNow) return;
+    setIsCheckingNow(true);
+    try {
+      await doCheck();
+    } finally {
+      setIsCheckingNow(false);
+    }
+  };
+
   const scheduleNext = () => {
     const delay = getMsUntil(checkTime);
     setCountdownSec(Math.floor(delay / 1000));
@@ -413,7 +424,8 @@ function App() {
           isRunning={isRunning}
           onStart={startPolling}
           onStop={stopPolling}
-          onCheckNow={doCheck}
+          onCheckNow={handleCheckNow}
+          isCheckingNow={isCheckingNow}
           onClear={clearAll}
           lastChecked={checksRun > 0 ? new Date().toLocaleTimeString() : null}
           toSearchTerms={toSearchTerms}
@@ -431,6 +443,14 @@ function App() {
           filterMatchedOnly={filterMatchedOnly} setFilterMatchedOnly={setFilterMatchedOnly}
           checkTime={checkTime} setCheckTime={setCheckTime}
         />
+        {isCheckingNow && (
+          <div className="check-now-progress" role="status" aria-live="polite" aria-label="Checking feeds now">
+            <span className="check-now-progress-label">Checking feeds now...</span>
+            <div className="check-now-progress-track" aria-hidden="true">
+              <div className="check-now-progress-fill"></div>
+            </div>
+          </div>
+        )}
         <ScanProgress count={scanningCount} />
         <ProgressBar countdownSec={countdownSec} totalSec={totalCycleSec} />
 
