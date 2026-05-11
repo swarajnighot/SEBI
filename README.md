@@ -1,41 +1,77 @@
-# 🏛️ SEBI Legal Monitor (React Dashboard)
+# SEBI Legal Monitor — React Dashboard
 
-A high-performance, professional dashboard for real-time monitoring of SEBI (Securities and Exchange Board of India) legal publications. This application migrates the legacy monolithic monitor into a modular React environment with advanced scheduling and inline PDF viewing.
+A professional, full-viewport dashboard for real-time monitoring of SEBI (Securities and Exchange Board of India) legal publications. Automatically scans PDF circulars to detect recipient targeting and highlights relevant feed items instantly.
 
-## 🚀 Key Features
+---
 
-### 1. Advanced Dashboard Architecture
-- **High-Density Sidebar Layout**: All controls, stats, and real-time logs are condensed into a sleek 380px sidebar, maximizing horizontal space for feed items.
-- **Modern UI Tokens**: Built using the **'Outfit'** font family and a professional slate/blue design system with smooth CSS transitions and glassmorphism effects.
+## Key Features
+
+### 1. Dashboard Layout
+- **Full-viewport design** — uses the entire browser window with no centering constraints
+- **Dark navy sidebar** with controls, recipient filters, and terminal logs
+- **Main content area** with a horizontal filter toolbar, progress bar, and feed list
 
 ### 2. Intelligent Monitoring & Scheduling
-- **Daily Fixed-Time Polling**: Instead of simple intervals, the app can be scheduled to run at a specific time daily (e.g., **7:00 PM**), aligning with publication windows.
-- **Real-Time Countdown**: A visual progress bar tracks the time remaining until the next scheduled daily check.
-- **Parallel Scraping**: Monitors RSS feeds and scrapes multiple SEBI categories (Acts, Rules, Regulations, Circulars, etc.) simultaneously for zero-latency detection.
+- **Daily fixed-time polling** — schedule checks at a specific time (e.g. 7:00 PM)
+- **Real-time countdown** — progress bar tracks time remaining until next scheduled check
+- **Parallel scraping** — RSS feed + multiple SEBI categories scraped simultaneously
 
-### 3. Integrated PDF Intelligence
-- **Inline PDF Viewer**: View publications directly within the app via a sleek modal.
-- **Blob-Proxy Bypass**: Uses a local proxy to download PDFs as Blobs, bypassing SEBI's strict `X-Frame-Options: SAMEORIGIN` and CORS policies that typically block inline viewing.
-- **Smart URL Resolution**: Automatically parses SEBI's complex landing pages to find the direct PDF attachment, even when obfuscated.
+### 3. PDF "To" Section Scanner
+- **Auto-scans new PDFs** in the background whenever a check runs
+- **Extracts the "To" section** of each circular (from "To" up to "Dear Sir/Madam" or "Sir/Madam")
+- **Matches against a configurable recipient list** — default terms:
+  - All Alternative Investment Funds (AIFs)
+  - All intermediaries registered with SEBI under Section 12 of the SEBI Act, 1992
+  - All registered intermediaries
+- **Highlights matched feed items** with an orange accent and a badge
+- **Live re-evaluation** — changing the recipient list instantly re-checks all already-scanned items without re-downloading
+- **Scan progress banner** — a live spinner shows how many PDFs are currently being scanned
 
-### 4. Visual Data Language
-- **Source-Specific Coding**: 
-  - **Blue Outline/Tint**: Represents official RSS feed items.
-  - **Yellow Outline/Tint**: Represents scraped website data.
-- **New Item Indicators**: Fresh publications are flagged with a distinctive inner glow and a bold right-border highlight.
+### 4. Recipient Filter Management (Sidebar)
+- Add custom recipient terms via a text input (press Enter or click Add)
+- Remove individual terms with the × button
+- Any term matching the "To" section triggers a highlight on that feed item
 
-### 5. Developer & Power User Tools
-- **Terminal Logs**: Integrated log box in the sidebar for real-time system feedback.
-- **Browser Notifications**: Supports native OS notifications for new publication alerts.
-- **Toast Notifications**: In-app popups for immediate feedback on check completion.
+### 5. Horizontal Filter Toolbar
+Sits above the progress bar in the main content area:
+- **Search** — filter feed by title keyword
+- **Category** — Acts, Rules, Regulations, Circulars, Guidelines, etc.
+- **New only** — show only items detected since the last check
+- **Scraped** — toggle inclusion of scraped (non-RSS) items
+- **Matched only** — show only items whose PDF "To" section matched a recipient term
+- **Check time** — set the daily scheduled check time
 
-## 🛠️ Technical Stack
-- **Frontend**: React 18, Vite
-- **Styling**: Vanilla CSS (Modern CSS Variables & Grid/Flex)
-- **Proxy**: Node.js (Express-based) for CORS/PDF fetching
-- **Fonts**: Outfit (Google Fonts), JetBrains Mono (Logs)
+### 6. Integrated PDF Viewer
+- **Inline PDF modal** — view circulars without leaving the app
+- **Blob-proxy bypass** — local proxy downloads PDFs as blobs, bypassing SEBI's `X-Frame-Options: SAMEORIGIN` and CORS restrictions
+- **Smart URL resolution** — parses SEBI landing pages to find direct PDF attachment URLs
 
-## 📦 Getting Started
+### 7. Visual Language
+- **Blue left border** — RSS feed items
+- **Yellow left border** — Scraped website items
+- **Orange left border + gradient** — items whose "To" section matched a recipient term
+- **Category dots** — color-coded dots per publication type (Acts, Rules, Regulations, etc.)
+
+### 8. Developer Tools
+- **Terminal log box** — real-time system feedback in the sidebar (JetBrains Mono)
+- **Browser notifications** — native OS alerts for new publications
+- **Toast notifications** — in-app popups on check completion
+
+---
+
+## Technical Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 19, Vite 8 |
+| Styling | Vanilla CSS (CSS Variables, Flexbox/Grid) |
+| PDF parsing | pdfjs-dist |
+| Proxy | Node.js (built-in `http` module) |
+| Fonts | Outfit (UI), JetBrains Mono (logs) |
+
+---
+
+## Getting Started
 
 ### 1. Install Dependencies
 ```bash
@@ -43,23 +79,41 @@ npm install
 ```
 
 ### 2. Start the Proxy Server (Required)
-The application requires the local proxy to bypass SEBI's security headers.
+The proxy bypasses SEBI's security headers for PDF fetching and page scraping.
 ```bash
 node server.cjs
 ```
 
-### 3. Start Development Server
+### 3. Start the Dev Server
 ```bash
 npm run dev
 ```
 
-## 📂 Project Structure
-- `src/App.jsx`: Main logic, scheduling, and state management.
-- `src/components/`:
-  - `PdfModal.jsx`: Inline PDF viewer logic.
-  - `FeedItem.jsx`: Component for individual publication cards.
-  - `Header.jsx` / `FilterBar.jsx` / `StatsRow.jsx`: Sidebar UI components.
-- `server.cjs`: The essential CORS-bypassing proxy server.
+Both must be running simultaneously. The proxy runs on `http://localhost:3001`.
 
 ---
-*Developed for professional SEBI monitoring and legal compliance tracking.*
+
+## Project Structure
+
+```
+src/
+├── App.jsx                  # Main logic, state, scheduling, filtering
+├── App.css                  # All component styles
+├── index.css                # Global reset (full-viewport)
+├── components/
+│   ├── Header.jsx           # Sidebar header: controls + recipient filter list
+│   ├── FilterBar.jsx        # Horizontal filter toolbar (search, category, toggles)
+│   ├── FeedItem.jsx         # Individual publication card
+│   ├── ScanProgress.jsx     # PDF scanning progress banner
+│   ├── ProgressBar.jsx      # Next-check countdown bar
+│   ├── LogBox.jsx           # Terminal-style log output
+│   ├── Toast.jsx            # In-app notification popup
+│   └── PdfModal.jsx         # Inline PDF viewer modal
+└── utils/
+    └── pdfReader.js         # PDF.js text extraction + "To" section parser
+server.cjs                   # CORS-bypassing proxy server (port 3001)
+```
+
+---
+
+*Built for professional SEBI monitoring and legal compliance tracking.*

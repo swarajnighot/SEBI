@@ -6,6 +6,7 @@ import FeedItem from './components/FeedItem';
 import LogBox from './components/LogBox';
 import Toast from './components/Toast';
 import PdfModal from './components/PdfModal';
+import ScanProgress from './components/ScanProgress';
 import { extractToSection } from './utils/pdfReader';
 import './App.css';
 
@@ -43,7 +44,12 @@ function App() {
   const [newCount, setNewCount] = useState(0);
   const [checksRun, setChecksRun] = useState(0);
   const [logs, setLogs] = useState([]);
-  const [toSearchTerms, setToSearchTerms] = useState(['All Alternative Investment Funds (AIFs)']);
+  const [toSearchTerms, setToSearchTerms] = useState([
+    'All Alternative Investment Funds (AIFs)',
+    'All intermediaries registered with SEBI under Section 12 of the Securities and Exchange Board of India Act, 1992',
+    'All registered intermediaries',
+  ]);
+  const [scanningCount, setScanningCount] = useState(0);
   const [toast, setToast] = useState(null);
   const [modal, setModal] = useState({
     isOpen: false, item: null, blobUrl: null, error: null, loading: false, loadingText: '' 
@@ -54,6 +60,7 @@ function App() {
   const [filterSearch, setFilterSearch] = useState('');
   const [filterNewOnly, setFilterNewOnly] = useState(false);
   const [filterScraped, setFilterScraped] = useState(false);
+  const [filterMatchedOnly, setFilterMatchedOnly] = useState(false);
 
   // Refs for timers
   const timeoutIdRef = useRef(null);
@@ -256,6 +263,7 @@ function App() {
     terms.some(t => t.trim().length > 0 && toSection.toLowerCase().includes(t.trim().toLowerCase()));
 
   const scanItemForAIF = useCallback(async (item, searchTerms) => {
+    setScanningCount(prev => prev + 1);
     try {
       const pdfUrl = await resolvePdfUrl(item.link);
       if (!pdfUrl) return;
@@ -281,6 +289,7 @@ function App() {
         i.link === item.link ? { ...i, toSection: toSection || '', aifTagged: matched } : i
       ));
     } catch (e) { /* silent — background scan */ }
+    finally { setScanningCount(prev => prev - 1); }
   }, [log]);
 
   const processNewItemsForAIF = useCallback((newItems, searchTerms) => {
@@ -397,6 +406,7 @@ function App() {
     if (filterNewOnly && !it.isNew) return false;
     if (!filterScraped && it.source === 'scrape') return false;
     if (filterSearch && !it.title.toLowerCase().includes(filterSearch.toLowerCase())) return false;
+    if (filterMatchedOnly && !it.aifTagged) return false;
     return true;
   });
 
@@ -428,8 +438,10 @@ function App() {
           filterSearch={filterSearch} setFilterSearch={setFilterSearch}
           filterNewOnly={filterNewOnly} setFilterNewOnly={setFilterNewOnly}
           filterScraped={filterScraped} setFilterScraped={setFilterScraped}
+          filterMatchedOnly={filterMatchedOnly} setFilterMatchedOnly={setFilterMatchedOnly}
           checkTime={checkTime} setCheckTime={setCheckTime}
         />
+        <ScanProgress count={scanningCount} />
         <ProgressBar countdownSec={countdownSec} totalSec={totalCycleSec} />
 
         <section className="feed-section">

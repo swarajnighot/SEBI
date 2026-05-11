@@ -2,7 +2,7 @@ import React from 'react';
 
 function FilterBar({ filterCat, setFilterCat, filterSearch, setFilterSearch,
   filterNewOnly, setFilterNewOnly, filterScraped, setFilterScraped,
-  checkTime, setCheckTime }) {
+  filterMatchedOnly, setFilterMatchedOnly, checkTime, setCheckTime }) {
   return (
     <div className="filter-bar" role="search" aria-label="Feed filters">
 
@@ -73,6 +73,24 @@ function FilterBar({ filterCat, setFilterCat, filterSearch, setFilterSearch,
             <span className="toggle-track"><span className="toggle-thumb" /></span>
           </span>
           Scraped
+        </label>
+      </div>
+
+      <div className="filter-divider" aria-hidden="true" />
+
+      {/* Matched only toggle */}
+      <div className="filter-item filter-item-toggle">
+        <label className="filter-toggle-label" htmlFor="filter-matched">
+          <span className="toggle-switch">
+            <input
+              id="filter-matched"
+              type="checkbox"
+              checked={filterMatchedOnly}
+              onChange={e => setFilterMatchedOnly(e.target.checked)}
+            />
+            <span className="toggle-track"><span className="toggle-thumb" /></span>
+          </span>
+          Matched only
         </label>
       </div>
 
