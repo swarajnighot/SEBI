@@ -4,7 +4,7 @@
   functions = "netlify/functions"
 
 [functions]
-  timeout = 26
+  directory = "netlify/functions"
 
 [[headers]]
   for = "/.netlify/functions/*"
