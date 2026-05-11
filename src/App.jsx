@@ -32,6 +32,7 @@ const SCRAPE_CATEGORIES = [
 ];
 
 const PDF_SIGNATURE = '%PDF-';
+const DEBUG_PDF_MATCH = true;
 
 function App() {
   // State
@@ -82,6 +83,13 @@ function App() {
     const time = new Date().toLocaleTimeString();
     setLogs(prev => [...prev.slice(-199), { text: `[${time}] ${text}`, type }]);
   }, []);
+
+  const debugLog = useCallback((text, extra = null, type = 'info') => {
+    if (!DEBUG_PDF_MATCH) return;
+    if (extra !== null) console.log(`[PDF DEBUG] ${text}`, extra);
+    else console.log(`[PDF DEBUG] ${text}`);
+    log(`[PDF DEBUG] ${text}`, type);
+  }, [log]);
 
   // Helper: Request Notifications
   useEffect(() => {
@@ -192,17 +200,26 @@ function App() {
         const res = await fetch(makeProxy(pdfUrl), { cache: 'no-store', signal: ctrl.signal });
         clearTimeout(timer);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const contentType = (res.headers.get('content-type') || '').toLowerCase();
 
         const rawBuffer = await res.arrayBuffer();
         const textPrefix = new TextDecoder('ascii').decode(rawBuffer.slice(0, 32));
-        if (textPrefix.startsWith(PDF_SIGNATURE)) return rawBuffer;
+        if (textPrefix.startsWith(PDF_SIGNATURE)) {
+          debugLog('Proxy returned raw PDF bytes.', { pdfUrl, contentType, size: rawBuffer.byteLength });
+          return rawBuffer;
+        }
 
         const fullText = new TextDecoder('ascii').decode(rawBuffer).trim();
-        if (fullText.startsWith('JVBERi0')) return decodeBase64ToArrayBuffer(fullText);
+        if (fullText.startsWith('JVBERi0')) {
+          const decoded = decodeBase64ToArrayBuffer(fullText);
+          debugLog('Proxy returned base64 PDF payload.', { pdfUrl, contentType, encodedSize: fullText.length, decodedSize: decoded.byteLength });
+          return decoded;
+        }
 
-        return rawBuffer;
+        throw new Error(`Unexpected PDF payload. content-type=${contentType || 'unknown'} prefix=${textPrefix.slice(0, 20)}`);
       } catch (err) {
         lastErr = err;
+        debugLog('PDF fetch attempt failed.', { pdfUrl, error: err.message }, 'warn');
       }
     }
     throw lastErr || new Error('Failed to fetch PDF.');
@@ -283,19 +300,31 @@ function App() {
     setScanningCount(prev => prev + 1);
     try {
       const pdfUrl = await resolvePdfUrl(item.link);
-      if (!pdfUrl) return;
+      if (!pdfUrl) {
+        debugLog('Could not resolve PDF URL for item.', { title: item.title, link: item.link }, 'warn');
+        return;
+      }
 
       const arrayBuffer = await fetchPdfArrayBuffer(pdfUrl);
+      debugLog('Running To-section extraction.', { title: item.title, pdfUrl, size: arrayBuffer.byteLength });
 
       const toSection = await extractToSection(arrayBuffer);
       const matched = toSection ? matchesAny(toSection, searchTerms) : false;
+      debugLog('To-section extraction completed.', {
+        title: item.title,
+        matched,
+        toLength: toSection ? toSection.length : 0,
+        preview: toSection ? toSection.substring(0, 160) : 'NO_TO_SECTION_FOUND',
+      });
       if (matched) log(`Match found in "To": ${item.title.substring(0, 60)}`, 'new');
       setItems(prev => prev.map(i =>
         i.link === item.link ? { ...i, toSection: toSection || '', aifTagged: matched } : i
       ));
-    } catch (e) { /* silent — background scan */ }
+    } catch (e) {
+      debugLog('Background scan failed.', { title: item.title, link: item.link, error: e.message }, 'err');
+    }
     finally { setScanningCount(prev => prev - 1); }
-  }, [log]);
+  }, [debugLog, log]);
 
   const processNewItemsForAIF = useCallback((newItems, searchTerms) => {
     newItems.forEach(item => scanItemForAIF(item, searchTerms));
