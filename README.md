@@ -47,6 +47,8 @@ Sits above the progress bar in the main content area:
 - **Inline PDF modal** — view circulars without leaving the app
 - **Serverless proxy** — Netlify Function downloads PDFs as blobs, bypassing SEBI's `X-Frame-Options: SAMEORIGIN` and CORS restrictions
 - **Smart URL resolution** — parses SEBI landing pages to find direct PDF attachment URLs
+- **Content-aware proxy** — text responses (HTML/XML) returned as plain string; binary (PDF) returned as base64, preventing encoding issues
+- **22-second frontend timeout** aligned with the 26-second Netlify function limit for clean error handling
 
 ### 7. Visual Language
 - **Blue left border** — RSS feed items
@@ -90,7 +92,14 @@ Sits above the progress bar in the main content area:
 
 That's it. The serverless proxy function (`netlify/functions/proxy.js`) deploys automatically alongside the frontend. No separate server needed.
 
-> **Note:** The daily monitoring scheduler still runs in the browser tab — you need to keep the tab open for scheduled checks to fire. For fully automated background monitoring, a backend cron job would be required (future enhancement).
+> **Important:** The daily monitoring scheduler runs in the browser tab — you need to keep the tab open for scheduled checks to fire. For fully automated background monitoring without a browser, a backend cron job would be required.
+
+### Proxy Function Details
+The Netlify function (`netlify/functions/proxy.js`):
+- Only allows requests to `https://www.sebi.gov.in/` (allowlisted)
+- Returns HTML/XML as plain text, PDFs as base64-encoded binary
+- Has a 23-second internal timeout with a proper `504` response on failure
+- Netlify function timeout is set to **26 seconds** in `netlify.toml`
 
 ---
 
