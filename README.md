@@ -10,7 +10,7 @@ A professional, full-viewport dashboard for real-time monitoring of SEBI (Securi
 
 ### 1. Dashboard Layout
 - **Full-viewport design** — uses the entire browser window with no centering constraints
-- **Dark navy sidebar** with controls, recipient filters, and terminal logs
+- **Dark navy sidebar** with controls and recipient filters
 - **Main content area** with a horizontal filter toolbar, progress bar, and feed list
 
 ### 2. Intelligent Monitoring & Scheduling
@@ -56,8 +56,7 @@ Sits above the progress bar in the main content area:
 - **Orange left border + gradient** — items whose "To" section matched a recipient term
 - **Category dots** — color-coded dots per publication type (Acts, Rules, Regulations, etc.)
 
-### 8. Developer Tools
-- **Terminal log box** — real-time system feedback in the sidebar (JetBrains Mono)
+### 8. Notifications
 - **Browser notifications** — native OS alerts for new publications
 - **Toast notifications** — in-app popups on check completion
 
@@ -72,7 +71,7 @@ Sits above the progress bar in the main content area:
 | PDF parsing | pdfjs-dist |
 | Proxy (production) | Netlify Serverless Function |
 | Proxy (local dev) | Node.js `server.cjs` on port 3001 |
-| Fonts | Outfit (UI), JetBrains Mono (logs) |
+| Fonts | Outfit |
 
 ---
 
@@ -99,7 +98,6 @@ The Netlify function (`netlify/functions/proxy.js`):
 - Only allows requests to `https://www.sebi.gov.in/` (allowlisted)
 - Returns HTML/XML as plain text, PDFs as base64-encoded binary
 - Has a 23-second internal timeout with a proper `504` response on failure
-- Netlify function timeout is set to **26 seconds** in `netlify.toml`
 
 ---
 
@@ -140,7 +138,6 @@ src/
 │   ├── FeedItem.jsx         # Individual publication card
 │   ├── ScanProgress.jsx     # PDF scanning progress banner
 │   ├── ProgressBar.jsx      # Next-check countdown bar
-│   ├── LogBox.jsx           # Terminal-style log output
 │   ├── Toast.jsx            # In-app notification popup
 │   └── PdfModal.jsx         # Inline PDF viewer modal
 └── utils/

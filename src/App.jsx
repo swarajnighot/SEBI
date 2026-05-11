@@ -3,7 +3,6 @@ import Header from './components/Header';
 import FilterBar from './components/FilterBar';
 import ProgressBar from './components/ProgressBar';
 import FeedItem from './components/FeedItem';
-import LogBox from './components/LogBox';
 import Toast from './components/Toast';
 import PdfModal from './components/PdfModal';
 import ScanProgress from './components/ScanProgress';
@@ -32,7 +31,6 @@ const SCRAPE_CATEGORIES = [
 ];
 
 const PDF_SIGNATURE = '%PDF-';
-const DEBUG_PDF_MATCH = true;
 
 function App() {
   // State
@@ -44,7 +42,6 @@ function App() {
   const [totalCycleSec, setTotalCycleSec] = useState(0);
   const [newCount, setNewCount] = useState(0);
   const [checksRun, setChecksRun] = useState(0);
-  const [logs, setLogs] = useState([]);
   const [toSearchTerms, setToSearchTerms] = useState([
     'All Alternative Investment Funds (AIFs)',
     'All intermediaries registered with SEBI under Section 12 of the Securities and Exchange Board of India Act, 1992',
@@ -78,19 +75,6 @@ function App() {
     return target.getTime() - now.getTime();
   };
 
-  // Helper: Log message
-  const log = useCallback((text, type = 'info') => {
-    const time = new Date().toLocaleTimeString();
-    setLogs(prev => [...prev.slice(-199), { text: `[${time}] ${text}`, type }]);
-  }, []);
-
-  const debugLog = useCallback((text, extra = null, type = 'info') => {
-    if (!DEBUG_PDF_MATCH) return;
-    if (extra !== null) console.log(`[PDF DEBUG] ${text}`, extra);
-    else console.log(`[PDF DEBUG] ${text}`);
-    log(`[PDF DEBUG] ${text}`, type);
-  }, [log]);
-
   // Helper: Request Notifications
   useEffect(() => {
     if ("Notification" in window && Notification.permission === "default") {
@@ -113,7 +97,6 @@ function App() {
   };
 
   const fetchRSS = async () => {
-    log('Fetching RSS feed...', 'info');
     let xmlText;
     let lastErr;
     for (let i = 0; i < CORS_PROXIES.length; i++) {
@@ -123,7 +106,6 @@ function App() {
         break;
       } catch (err) {
         lastErr = err;
-        log(`Proxy ${i + 1} failed: ${err.message}`, 'warn');
       }
     }
     if (!xmlText) throw lastErr;
@@ -148,7 +130,6 @@ function App() {
     try {
       html = await fetchViaProxy(url);
     } catch (err) {
-      log(`Scrape failed [${cfg.label}]: ${err.message}`, 'err');
       return [];
     }
     const doc = new DOMParser().parseFromString(html, 'text/html');
@@ -204,22 +185,17 @@ function App() {
 
         const rawBuffer = await res.arrayBuffer();
         const textPrefix = new TextDecoder('ascii').decode(rawBuffer.slice(0, 32));
-        if (textPrefix.startsWith(PDF_SIGNATURE)) {
-          debugLog('Proxy returned raw PDF bytes.', { pdfUrl, contentType, size: rawBuffer.byteLength });
-          return rawBuffer;
-        }
+        if (textPrefix.startsWith(PDF_SIGNATURE)) return rawBuffer;
 
         const fullText = new TextDecoder('ascii').decode(rawBuffer).trim();
         if (fullText.startsWith('JVBERi0')) {
           const decoded = decodeBase64ToArrayBuffer(fullText);
-          debugLog('Proxy returned base64 PDF payload.', { pdfUrl, contentType, encodedSize: fullText.length, decodedSize: decoded.byteLength });
           return decoded;
         }
 
         throw new Error(`Unexpected PDF payload. content-type=${contentType || 'unknown'} prefix=${textPrefix.slice(0, 20)}`);
       } catch (err) {
         lastErr = err;
-        debugLog('PDF fetch attempt failed.', { pdfUrl, error: err.message }, 'warn');
       }
     }
     throw lastErr || new Error('Failed to fetch PDF.');
@@ -267,7 +243,6 @@ function App() {
       setModal(prev => ({ ...prev, blobUrl, loading: false }));
     } catch (err) {
       setModal(prev => ({ ...prev, error: err.message, loading: false }));
-      log(`PDF Error: ${err.message}`, 'err');
     }
   };
 
@@ -300,31 +275,18 @@ function App() {
     setScanningCount(prev => prev + 1);
     try {
       const pdfUrl = await resolvePdfUrl(item.link);
-      if (!pdfUrl) {
-        debugLog('Could not resolve PDF URL for item.', { title: item.title, link: item.link }, 'warn');
-        return;
-      }
+      if (!pdfUrl) return;
 
       const arrayBuffer = await fetchPdfArrayBuffer(pdfUrl);
-      debugLog('Running To-section extraction.', { title: item.title, pdfUrl, size: arrayBuffer.byteLength });
 
       const toSection = await extractToSection(arrayBuffer);
       const matched = toSection ? matchesAny(toSection, searchTerms) : false;
-      debugLog('To-section extraction completed.', {
-        title: item.title,
-        matched,
-        toLength: toSection ? toSection.length : 0,
-        preview: toSection ? toSection.substring(0, 160) : 'NO_TO_SECTION_FOUND',
-      });
-      if (matched) log(`Match found in "To": ${item.title.substring(0, 60)}`, 'new');
       setItems(prev => prev.map(i =>
         i.link === item.link ? { ...i, toSection: toSection || '', aifTagged: matched } : i
       ));
-    } catch (e) {
-      debugLog('Background scan failed.', { title: item.title, link: item.link, error: e.message }, 'err');
-    }
+    } catch (e) { /* silent background scan */ }
     finally { setScanningCount(prev => prev - 1); }
-  }, [debugLog, log]);
+  }, []);
 
   const processNewItemsForAIF = useCallback((newItems, searchTerms) => {
     newItems.forEach(item => scanItemForAIF(item, searchTerms));
@@ -344,7 +306,7 @@ function App() {
     setChecksRun(prev => prev + 1);
     try {
       const [rss, scrapedSettled] = await Promise.all([
-        fetchRSS().catch(e => { log(`RSS Error: ${e.message}`, 'err'); return []; }),
+        fetchRSS().catch(() => []),
         Promise.allSettled(SCRAPE_CATEGORIES.map(c => scrapeCategory(c)))
       ]);
 
@@ -369,13 +331,11 @@ function App() {
             if (isFirstRunRef.current) initialScanItems.push(newItem);
             if (isNew) {
               newFound.push(newItem);
-              log(`NEW: ${item.title.substring(0, 60)}...`, 'new');
             }
           }
         });
 
         if (isFirstRunRef.current) {
-          log(`Initial run: scanning ${initialScanItems.length} items for "To" matches.`, 'info');
           processNewItemsForAIF(initialScanItems, toSearchTerms);
         }
 
@@ -386,19 +346,13 @@ function App() {
             new Notification("SEBI Update", { body: `${newFound.length} new items found.` });
           }
           processNewItemsForAIF(newFound, toSearchTerms);
-        } else if (!isFirstRunRef.current) {
-          log('No new items in this run, so no new "To" scans were triggered.', 'info');
         }
 
         setKnownLinks(newKnown);
         isFirstRunRef.current = false;
         return updatedItems;
       });
-
-      log('Check completed.', 'info');
-    } catch (err) {
-      log(`Check failed: ${err.message}`, 'err');
-    }
+    } catch (err) {}
     
     if (isRunning) {
       scheduleNext();
@@ -421,7 +375,6 @@ function App() {
   const startPolling = () => {
     if (isRunning) return;
     setIsRunning(true);
-    log(`Scheduling next check for ${checkTime}.`, 'info');
     scheduleNext();
   };
 
@@ -430,7 +383,6 @@ function App() {
     clearTimeout(timeoutIdRef.current);
     clearInterval(countdownIdRef.current);
     setCountdownSec(0);
-    log('Monitoring stopped.', 'info');
   };
 
   const clearAll = () => {
@@ -438,9 +390,7 @@ function App() {
     setKnownLinks(new Set());
     setNewCount(0);
     setChecksRun(0);
-    setLogs([]);
     isFirstRunRef.current = true;
-    log('All data cleared.', 'info');
   };
 
   // Filtered view
@@ -469,9 +419,6 @@ function App() {
           toSearchTerms={toSearchTerms}
           onToSearchTermsChange={setToSearchTerms}
         />
-
-
-        <LogBox logs={logs} />
       </aside>
 
       {/* Main Content Area */}
