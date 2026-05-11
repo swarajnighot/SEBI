@@ -31,6 +31,8 @@ const SCRAPE_CATEGORIES = [
   { cat: 'master-circulars', ssid: 6, label: 'Master Circulars' },
 ];
 
+const PDF_SIGNATURE = '%PDF-';
+
 function App() {
   // State
   const [items, setItems] = useState([]);
@@ -172,6 +174,40 @@ function App() {
     throw new Error('All proxies failed');
   };
 
+  const decodeBase64ToArrayBuffer = (base64) => {
+    const cleaned = (base64 || '').replace(/\s+/g, '');
+    const binary = atob(cleaned);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes.buffer;
+  };
+
+  // Normalizes PDF responses across local proxy (binary) and Netlify (possible base64 text).
+  const fetchPdfArrayBuffer = async (pdfUrl) => {
+    let lastErr = null;
+    for (const makeProxy of CORS_PROXIES) {
+      try {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 22000);
+        const res = await fetch(makeProxy(pdfUrl), { cache: 'no-store', signal: ctrl.signal });
+        clearTimeout(timer);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const rawBuffer = await res.arrayBuffer();
+        const textPrefix = new TextDecoder('ascii').decode(rawBuffer.slice(0, 32));
+        if (textPrefix.startsWith(PDF_SIGNATURE)) return rawBuffer;
+
+        const fullText = new TextDecoder('ascii').decode(rawBuffer).trim();
+        if (fullText.startsWith('JVBERi0')) return decodeBase64ToArrayBuffer(fullText);
+
+        return rawBuffer;
+      } catch (err) {
+        lastErr = err;
+      }
+    }
+    throw lastErr || new Error('Failed to fetch PDF.');
+  };
+
   const resolvePdfUrl = async (detailLink) => {
     try {
       const html = await fetchViaProxy(detailLink);
@@ -208,26 +244,9 @@ function App() {
 
       setModal(prev => ({ ...prev, loadingText: 'Downloading PDF...' }));
       
-      let blobUrl = null;
-      let lastErr = null;
-
-      for (const makeProxy of CORS_PROXIES) {
-        try {
-          const ctrl = new AbortController();
-          const timer = setTimeout(() => ctrl.abort(), 22000);
-          const res = await fetch(makeProxy(pdfUrl), { cache: 'no-store', signal: ctrl.signal });
-          clearTimeout(timer);
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
-          const buf = await res.arrayBuffer();
-          const blob = new Blob([buf], { type: 'application/pdf' });
-          blobUrl = URL.createObjectURL(blob);
-          break;
-        } catch (err) {
-          lastErr = err;
-        }
-      }
-
-      if (!blobUrl) throw lastErr || new Error('Failed to fetch PDF.');
+      const buf = await fetchPdfArrayBuffer(pdfUrl);
+      const blob = new Blob([buf], { type: 'application/pdf' });
+      const blobUrl = URL.createObjectURL(blob);
       setModal(prev => ({ ...prev, blobUrl, loading: false }));
     } catch (err) {
       setModal(prev => ({ ...prev, error: err.message, loading: false }));
@@ -266,19 +285,7 @@ function App() {
       const pdfUrl = await resolvePdfUrl(item.link);
       if (!pdfUrl) return;
 
-      let arrayBuffer = null;
-      for (const makeProxy of CORS_PROXIES) {
-        try {
-          const ctrl = new AbortController();
-          const timer = setTimeout(() => ctrl.abort(), 22000);
-          const res = await fetch(makeProxy(pdfUrl), { cache: 'no-store', signal: ctrl.signal });
-          clearTimeout(timer);
-          if (!res.ok) continue;
-          arrayBuffer = await res.arrayBuffer();
-          break;
-        } catch (e) { /* try next proxy */ }
-      }
-      if (!arrayBuffer) return;
+      const arrayBuffer = await fetchPdfArrayBuffer(pdfUrl);
 
       const toSection = await extractToSection(arrayBuffer);
       const matched = toSection ? matchesAny(toSection, searchTerms) : false;
