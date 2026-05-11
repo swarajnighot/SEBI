@@ -214,7 +214,7 @@ function App() {
       for (const makeProxy of CORS_PROXIES) {
         try {
           const ctrl = new AbortController();
-          const timer = setTimeout(() => ctrl.abort(), 40000);
+          const timer = setTimeout(() => ctrl.abort(), 22000);
           const res = await fetch(makeProxy(pdfUrl), { cache: 'no-store', signal: ctrl.signal });
           clearTimeout(timer);
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -270,7 +270,7 @@ function App() {
       for (const makeProxy of CORS_PROXIES) {
         try {
           const ctrl = new AbortController();
-          const timer = setTimeout(() => ctrl.abort(), 40000);
+          const timer = setTimeout(() => ctrl.abort(), 22000);
           const res = await fetch(makeProxy(pdfUrl), { cache: 'no-store', signal: ctrl.signal });
           clearTimeout(timer);
           if (!res.ok) continue;
