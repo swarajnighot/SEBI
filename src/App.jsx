@@ -12,15 +12,13 @@ import './App.css';
 
 // ---------- Configuration ----------
 const RSS_URL = 'https://www.sebi.gov.in/sebirss.xml';
-const USE_LOCAL_PROXY = true; 
-const LOCAL_PROXY = 'http://localhost:3001/proxy?url=';
-const PUBLIC_PROXIES = [
-  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-];
-const CORS_PROXIES = USE_LOCAL_PROXY
-  ? [url => `${LOCAL_PROXY}${encodeURIComponent(url)}`]
-  : PUBLIC_PROXIES;
+
+// In production (Netlify) use the serverless function; locally use server.cjs
+const PROXY_BASE = import.meta.env.PROD
+  ? '/.netlify/functions/proxy?url='
+  : 'http://localhost:3001/proxy?url=';
+
+const CORS_PROXIES = [url => `${PROXY_BASE}${encodeURIComponent(url)}`];
 const FETCH_TIMEOUT_MS = 15000;
 const EXCLUDED_CATS = new Set(['orders', 'enforcement', 'other']);
 const SEBI_BASE = 'https://www.sebi.gov.in';

@@ -2,6 +2,8 @@
 
 A professional, full-viewport dashboard for real-time monitoring of SEBI (Securities and Exchange Board of India) legal publications. Automatically scans PDF circulars to detect recipient targeting and highlights relevant feed items instantly.
 
+**Live demo:** hosted on Netlify — deploy your own with the one-click guide below.
+
 ---
 
 ## Key Features
@@ -43,7 +45,7 @@ Sits above the progress bar in the main content area:
 
 ### 6. Integrated PDF Viewer
 - **Inline PDF modal** — view circulars without leaving the app
-- **Blob-proxy bypass** — local proxy downloads PDFs as blobs, bypassing SEBI's `X-Frame-Options: SAMEORIGIN` and CORS restrictions
+- **Serverless proxy** — Netlify Function downloads PDFs as blobs, bypassing SEBI's `X-Frame-Options: SAMEORIGIN` and CORS restrictions
 - **Smart URL resolution** — parses SEBI landing pages to find direct PDF attachment URLs
 
 ### 7. Visual Language
@@ -66,36 +68,59 @@ Sits above the progress bar in the main content area:
 | Frontend | React 19, Vite 8 |
 | Styling | Vanilla CSS (CSS Variables, Flexbox/Grid) |
 | PDF parsing | pdfjs-dist |
-| Proxy | Node.js (built-in `http` module) |
+| Proxy (production) | Netlify Serverless Function |
+| Proxy (local dev) | Node.js `server.cjs` on port 3001 |
 | Fonts | Outfit (UI), JetBrains Mono (logs) |
 
 ---
 
-## Getting Started
+## Deploying to Netlify (Recommended)
 
-### 1. Install Dependencies
-```bash
-npm install
-```
+### 1. Push this repo to GitHub (if not already done)
 
-### 2. Start the Proxy Server (Required)
-The proxy bypasses SEBI's security headers for PDF fetching and page scraping.
+### 2. Connect to Netlify
+1. Go to [netlify.com](https://netlify.com) and log in
+2. Click **"Add new site" → "Import an existing project"**
+3. Select **GitHub** and choose this repository
+4. Netlify auto-detects `netlify.toml` — build settings are pre-configured:
+   - Build command: `npm run build`
+   - Publish directory: `dist`
+   - Functions directory: `netlify/functions`
+5. Click **"Deploy site"**
+
+That's it. The serverless proxy function (`netlify/functions/proxy.js`) deploys automatically alongside the frontend. No separate server needed.
+
+> **Note:** The daily monitoring scheduler still runs in the browser tab — you need to keep the tab open for scheduled checks to fire. For fully automated background monitoring, a backend cron job would be required (future enhancement).
+
+---
+
+## Local Development
+
+### Option A — Standard (two terminals)
 ```bash
+# Terminal 1 — proxy server
 node server.cjs
-```
 
-### 3. Start the Dev Server
-```bash
+# Terminal 2 — Vite dev server
 npm run dev
 ```
+The app auto-detects the local environment and routes through `http://localhost:3001`.
 
-Both must be running simultaneously. The proxy runs on `http://localhost:3001`.
+### Option B — Netlify Dev (single terminal, matches production exactly)
+```bash
+npm install -g netlify-cli
+netlify dev
+```
+Runs Vite + the Netlify Function locally together on `http://localhost:8888`.
 
 ---
 
 ## Project Structure
 
 ```
+netlify/
+└── functions/
+    └── proxy.js             # Serverless CORS proxy (replaces server.cjs in production)
 src/
 ├── App.jsx                  # Main logic, state, scheduling, filtering
 ├── App.css                  # All component styles
@@ -111,7 +136,8 @@ src/
 │   └── PdfModal.jsx         # Inline PDF viewer modal
 └── utils/
     └── pdfReader.js         # PDF.js text extraction + "To" section parser
-server.cjs                   # CORS-bypassing proxy server (port 3001)
+server.cjs                   # Local dev proxy server (port 3001)
+netlify.toml                 # Netlify build + function configuration
 ```
 
 ---
