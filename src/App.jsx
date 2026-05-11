@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Header from './components/Header';
 import FilterBar from './components/FilterBar';
-import StatsRow from './components/StatsRow';
 import ProgressBar from './components/ProgressBar';
 import FeedItem from './components/FeedItem';
 import LogBox from './components/LogBox';
@@ -418,27 +417,19 @@ function App() {
           onToSearchTermsChange={setToSearchTerms}
         />
 
-        <StatsRow 
-          totalItems={items.length} 
-          newSinceStart={newCount} 
-          legalItems={legalCount} 
-          checksRun={checksRun} 
-          lastChecked={checksRun > 0 ? new Date().toLocaleTimeString() : null}
-        />
-
-        <FilterBar 
-          filterCat={filterCat} setFilterCat={setFilterCat}
-          filterSearch={filterSearch} setFilterSearch={setFilterSearch}
-          filterNewOnly={filterNewOnly} setFilterNewOnly={setFilterNewOnly}
-          filterScraped={filterScraped} setFilterScraped={setFilterScraped}
-          checkTime={checkTime} setCheckTime={setCheckTime}
-        />
 
         <LogBox logs={logs} />
       </aside>
 
       {/* Main Content Area */}
       <main className="main-content">
+        <FilterBar
+          filterCat={filterCat} setFilterCat={setFilterCat}
+          filterSearch={filterSearch} setFilterSearch={setFilterSearch}
+          filterNewOnly={filterNewOnly} setFilterNewOnly={setFilterNewOnly}
+          filterScraped={filterScraped} setFilterScraped={setFilterScraped}
+          checkTime={checkTime} setCheckTime={setCheckTime}
+        />
         <ProgressBar countdownSec={countdownSec} totalSec={totalCycleSec} />
 
         <section className="feed-section">

@@ -1,24 +1,21 @@
 import React from 'react';
 
-function StatsRow({ totalItems, newSinceStart, legalItems, checksRun, lastChecked }) {
+function StatCard({ num, label, mod }) {
   return (
-    <div className="stats-row">
-      <div className="stat-card">
-        <div className="num">{totalItems}</div>
-        <div className="lbl">Total</div>
-      </div>
-      <div className="stat-card highlight">
-        <div className="num">{newSinceStart}</div>
-        <div className="lbl">New</div>
-      </div>
-      <div className="stat-card">
-        <div className="num">{legalItems}</div>
-        <div className="lbl">Legal</div>
-      </div>
-      <div className="stat-card">
-        <div className="num">{checksRun}</div>
-        <div className="lbl">Checks</div>
-      </div>
+    <div className={`stat-card${mod ? ` ${mod}` : ''}`}>
+      <div className="num">{num}</div>
+      <div className="lbl">{label}</div>
+    </div>
+  );
+}
+
+function StatsRow({ totalItems, newSinceStart, legalItems, checksRun }) {
+  return (
+    <div className="stats-row" role="region" aria-label="Feed statistics">
+      <StatCard num={totalItems}    label="Total"   />
+      <StatCard num={newSinceStart} label="New"     mod="highlight" />
+      <StatCard num={legalItems}    label="Legal"   mod="stat-success" />
+      <StatCard num={checksRun}     label="Checks"  />
     </div>
   );
 }
