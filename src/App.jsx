@@ -357,6 +357,7 @@ function App() {
       setItems(prevItems => {
         const newKnown = new Set(knownLinks);
         const newFound = [];
+        const initialScanItems = [];
         const updatedItems = [...prevItems];
 
         combined.forEach(item => {
@@ -365,12 +366,18 @@ function App() {
             const isNew = !isFirstRunRef.current;
             const newItem = { ...item, isNew };
             updatedItems.unshift(newItem);
+            if (isFirstRunRef.current) initialScanItems.push(newItem);
             if (isNew) {
               newFound.push(newItem);
               log(`NEW: ${item.title.substring(0, 60)}...`, 'new');
             }
           }
         });
+
+        if (isFirstRunRef.current) {
+          log(`Initial run: scanning ${initialScanItems.length} items for "To" matches.`, 'info');
+          processNewItemsForAIF(initialScanItems, toSearchTerms);
+        }
 
         if (newFound.length > 0) {
           setNewCount(prev => prev + newFound.length);
@@ -379,6 +386,8 @@ function App() {
             new Notification("SEBI Update", { body: `${newFound.length} new items found.` });
           }
           processNewItemsForAIF(newFound, toSearchTerms);
+        } else if (!isFirstRunRef.current) {
+          log('No new items in this run, so no new "To" scans were triggered.', 'info');
         }
 
         setKnownLinks(newKnown);
