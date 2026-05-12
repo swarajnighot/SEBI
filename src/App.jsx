@@ -6,6 +6,7 @@ import FeedItem from './components/FeedItem';
 import Toast from './components/Toast';
 import PdfModal from './components/PdfModal';
 import ScanProgress from './components/ScanProgress';
+import LoginScreen from './components/LoginScreen';
 import { extractToSection } from './utils/pdfReader';
 import './App.css';
 
@@ -28,11 +29,28 @@ const SCRAPE_CATEGORIES = [
   { cat: 'general-orders', ssid: 4, label: 'General Orders' },
   { cat: 'guidelines', ssid: 5, label: 'Guidelines' },
   { cat: 'master-circulars', ssid: 6, label: 'Master Circulars' },
+  { cat: 'circulars', ssid: 7, label: 'Circulars' },
 ];
 
 const PDF_SIGNATURE = '%PDF-';
 
 function App() {
+  // Auth
+  const [currentUser, setCurrentUser] = useState(() => {
+    try { return JSON.parse(sessionStorage.getItem('sebi_user')) || null; }
+    catch { return null; }
+  });
+
+  const handleLogin = (user) => {
+    sessionStorage.setItem('sebi_user', JSON.stringify(user));
+    setCurrentUser(user);
+  };
+
+  const handleLogout = () => {
+    sessionStorage.removeItem('sebi_user');
+    setCurrentUser(null);
+  };
+
   // State
   const [items, setItems] = useState([]);
   const [knownLinks, setKnownLinks] = useState(new Set());
@@ -370,6 +388,9 @@ function App() {
     }
   };
 
+  // Run a check automatically on first load
+  useEffect(() => { handleCheckNow(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const scheduleNext = () => {
     const delay = getMsUntil(checkTime);
     setCountdownSec(Math.floor(delay / 1000));
@@ -404,33 +425,71 @@ function App() {
     isFirstRunRef.current = true;
   };
 
-  // Filtered view
-  const filteredItems = items.filter(it => {
-    if (filterCat !== 'all' && it.cat !== filterCat) return false;
-    if (filterNewOnly && !it.isNew) return false;
-    if (!filterScraped && it.source === 'scrape') return false;
-    if (filterSearch && !it.title.toLowerCase().includes(filterSearch.toLowerCase())) return false;
-    if (filterMatchedOnly && !it.aifTagged) return false;
-    return true;
-  });
+  // Normalises date strings like "08 May, 2026 +0530" or "5 May 2026" into a timestamp
+  const parseItemDate = (dateStr) => {
+    if (!dateStr) return NaN;
+    const cleaned = dateStr.replace(/[+-]\d{4}\s*$/, '').replace(/,/g, '').trim();
+    const d = new Date(cleaned);
+    return isNaN(d.getTime()) ? NaN : d.getTime();
+  };
+
+  // Filtered view — only 2025 onwards, sorted latest first
+  const filteredItems = items
+    .filter(it => {
+      if (filterCat !== 'all' && it.cat !== filterCat) return false;
+      if (filterNewOnly && !it.isNew) return false;
+      if (!filterScraped && it.source === 'scrape') return false;
+      if (filterSearch && !it.title.toLowerCase().includes(filterSearch.toLowerCase())) return false;
+      if (filterMatchedOnly && !it.aifTagged) return false;
+      const ts = parseItemDate(it.pubDate);
+      if (!isNaN(ts) && new Date(ts).getFullYear() < 2025) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      const da = parseItemDate(a.pubDate) || 0;
+      const db = parseItemDate(b.pubDate) || 0;
+      return db - da;
+    });
 
   const legalCount = items.filter(i => i.cat !== 'other').length;
+
+  if (!currentUser) return <LoginScreen onLogin={handleLogin} />;
 
   return (
     <div className="dashboard-layout">
       {/* Sidebar Area */}
       <aside className="sidebar">
-        <Header
-          isRunning={isRunning}
-          onStart={startPolling}
-          onStop={stopPolling}
-          onCheckNow={handleCheckNow}
-          isCheckingNow={isCheckingNow}
-          onClear={clearAll}
-          lastChecked={checksRun > 0 ? new Date().toLocaleTimeString() : null}
-          toSearchTerms={toSearchTerms}
-          onToSearchTermsChange={setToSearchTerms}
-        />
+        <div className="sidebar-scroll">
+          <Header
+            isRunning={isRunning}
+            onStart={startPolling}
+            onStop={stopPolling}
+            onCheckNow={handleCheckNow}
+            isCheckingNow={isCheckingNow}
+            onClear={clearAll}
+            lastChecked={checksRun > 0 ? new Date().toLocaleTimeString() : null}
+            toSearchTerms={toSearchTerms}
+            onToSearchTermsChange={setToSearchTerms}
+            currentUser={currentUser}
+            onLogout={handleLogout}
+          />
+        </div>
+        {currentUser && (
+          <div className="sidebar-user-footer">
+            <div className="sidebar-user-avatar" aria-hidden="true">
+              {currentUser.username.charAt(0).toUpperCase()}
+            </div>
+            <span className="sidebar-user-name">{currentUser.username}</span>
+            <button className="sidebar-signout-btn" onClick={handleLogout} aria-label="Sign out">
+              <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                <polyline points="16 17 21 12 16 7"/>
+                <line x1="21" y1="12" x2="9" y2="12"/>
+              </svg>
+              Sign out
+            </button>
+          </div>
+        )}
       </aside>
 
       {/* Main Content Area */}
@@ -442,6 +501,8 @@ function App() {
           filterScraped={filterScraped} setFilterScraped={setFilterScraped}
           filterMatchedOnly={filterMatchedOnly} setFilterMatchedOnly={setFilterMatchedOnly}
           checkTime={checkTime} setCheckTime={setCheckTime}
+          onCheckNow={handleCheckNow} isCheckingNow={isCheckingNow}
+          isRunning={isRunning} onStart={startPolling} onStop={stopPolling}
         />
         {isCheckingNow && (
           <div className="check-now-progress" role="status" aria-live="polite" aria-label="Checking feeds now">

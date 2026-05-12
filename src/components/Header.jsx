@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-function Header({ isRunning, onStart, onStop, onCheckNow, isCheckingNow, onClear, lastChecked, toSearchTerms, onToSearchTermsChange }) {
+function Header({ isRunning, lastChecked, toSearchTerms, onToSearchTermsChange, currentUser, onLogout }) {
   const [inputVal, setInputVal] = useState('');
 
   const addTerm = () => {
@@ -24,17 +24,6 @@ function Header({ isRunning, onStart, onStop, onCheckNow, isCheckingNow, onClear
       <div className="status-area">
         <span className={`status-dot ${isRunning ? 'running' : 'stopped'}`} aria-hidden="true" />
         <span className="status-label">{isRunning ? 'Monitoring active' : 'Monitoring stopped'}</span>
-      </div>
-
-      <div className="controls">
-        <button id="btn-check" onClick={onCheckNow} aria-label="Run check now" disabled={isCheckingNow}>
-          {isCheckingNow ? 'Checking...' : 'Check Now'}
-        </button>
-        {isRunning
-          ? <button id="btn-stop"  onClick={onStop}  aria-label="Stop monitoring">Stop</button>
-          : <button id="btn-start" onClick={onStart} aria-label="Start monitoring">Start</button>
-        }
-        <button id="btn-clear" onClick={onClear} aria-label="Clear all data">Clear All Data</button>
       </div>
 
       <div className="to-search-block">
