@@ -1,5 +1,8 @@
 // Netlify serverless function — CORS proxy for sebi.gov.in
-// Handles both text (HTML, XML) and binary (PDF) responses correctly
+// Handles text (HTML, XML) and binary (PDF).
+// Netlify Functions hard-cap is 6 MB per response body. For PDFs exceeding
+// that limit the proxy returns a JSON sentinel so the client can open the
+// file directly in an iframe instead of buffering it through JS.
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -7,11 +10,19 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
+const MAX_INLINE_BYTES = 5 * 1024 * 1024; // 5 MB safety margin below 6 MB cap
+
 const isBinaryType = (contentType = '') =>
   !contentType.includes('text/') &&
   !contentType.includes('application/xml') &&
   !contentType.includes('application/xhtml') &&
   !contentType.includes('application/json');
+
+const tooLargeResponse = (target) => ({
+  statusCode: 200,
+  headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+  body: JSON.stringify({ __proxyTooLarge: true, directUrl: target }),
+});
 
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
@@ -29,7 +40,6 @@ exports.handler = async (event) => {
   }
 
   try {
-    // Stay well within Netlify's 26s function timeout
     const signal = AbortSignal.timeout(23000);
 
     const response = await fetch(target, {
@@ -41,19 +51,34 @@ exports.handler = async (event) => {
       signal,
     });
 
+    // Pass 4xx errors through so the client can distinguish "not found" from proxy errors.
+    if (!response.ok) {
+      return {
+        statusCode: response.status,
+        headers: CORS_HEADERS,
+        body: `SEBI returned ${response.status}`,
+      };
+    }
+
     const contentType = response.headers.get('content-type') || 'application/octet-stream';
 
     if (isBinaryType(contentType)) {
-      // PDF / binary — encode as base64 so Netlify can transmit it
+      // Bail early if Content-Length header reveals the file is too large.
+      const contentLength = parseInt(response.headers.get('content-length') || '0', 10);
+      if (contentLength > MAX_INLINE_BYTES) return tooLargeResponse(target);
+
       const buffer = await response.arrayBuffer();
+
+      // Double-check after buffering (Content-Length may be absent or wrong).
+      if (buffer.byteLength > MAX_INLINE_BYTES) return tooLargeResponse(target);
+
       return {
-        statusCode: response.status,
+        statusCode: 200,
         headers: { ...CORS_HEADERS, 'Content-Type': contentType },
         body: Buffer.from(buffer).toString('base64'),
         isBase64Encoded: true,
       };
     } else {
-      // HTML / XML / text — return as plain string
       const text = await response.text();
       return {
         statusCode: response.status,

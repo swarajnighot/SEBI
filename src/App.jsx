@@ -193,6 +193,8 @@ function App() {
   };
 
   // Normalizes PDF responses across local proxy (binary) and Netlify (possible base64 text).
+  // Throws { message: 'PDF_TOO_LARGE', directUrl } when the proxy signals the file
+  // exceeds the Netlify 6 MB function response limit.
   const fetchPdfArrayBuffer = async (pdfUrl) => {
     let lastErr = null;
     for (const makeProxy of CORS_PROXIES) {
@@ -202,19 +204,27 @@ function App() {
         const res = await fetch(makeProxy(pdfUrl), { cache: 'no-store', signal: ctrl.signal });
         clearTimeout(timer);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const contentType = (res.headers.get('content-type') || '').toLowerCase();
 
         const rawBuffer = await res.arrayBuffer();
         const textPrefix = new TextDecoder('ascii').decode(rawBuffer.slice(0, 32));
+
+        // Proxy signals file is too large to buffer inline.
+        if (textPrefix.startsWith('{"__proxyTooLarge"')) {
+          const json = JSON.parse(new TextDecoder().decode(rawBuffer));
+          const err = new Error('PDF_TOO_LARGE');
+          err.directUrl = json.directUrl;
+          throw err;
+        }
+
         if (textPrefix.startsWith(PDF_SIGNATURE)) return rawBuffer;
 
         const fullText = new TextDecoder('ascii').decode(rawBuffer).trim();
         if (fullText.startsWith('JVBERi0')) {
-          const decoded = decodeBase64ToArrayBuffer(fullText);
-          return decoded;
+          return decodeBase64ToArrayBuffer(fullText);
         }
 
-        throw new Error(`Unexpected PDF payload. content-type=${contentType || 'unknown'} prefix=${textPrefix.slice(0, 20)}`);
+        const ct = (res.headers.get('content-type') || '').toLowerCase();
+        throw new Error(`Unexpected PDF payload. content-type=${ct || 'unknown'} prefix=${textPrefix.slice(0, 20)}`);
       } catch (err) {
         lastErr = err;
       }
@@ -263,7 +273,13 @@ function App() {
       const blobUrl = URL.createObjectURL(blob);
       setModal(prev => ({ ...prev, blobUrl, loading: false }));
     } catch (err) {
-      setModal(prev => ({ ...prev, error: err.message, loading: false }));
+      if (err.message === 'PDF_TOO_LARGE' && err.directUrl) {
+        // File exceeds proxy limit — display via direct SEBI URL in the iframe.
+        // Iframe display doesn't require CORS headers.
+        setModal(prev => ({ ...prev, blobUrl: err.directUrl, loading: false }));
+      } else {
+        setModal(prev => ({ ...prev, error: err.message, loading: false }));
+      }
     }
   };
 
