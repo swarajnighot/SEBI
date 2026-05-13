@@ -17,7 +17,10 @@ function Header({ isRunning, lastChecked, toSearchTerms, onToSearchTermsChange, 
   return (
     <header>
       <div className="title-block">
-        <h1>SEBI Monitor</h1>
+        <div className="title-brand">
+          <img src="/sebiicon.png" alt="SEBI" className="sidebar-logo" />
+          <h1>SEBI Monitor</h1>
+        </div>
         {lastChecked && <span className="title-last-checked">Last check: {lastChecked}</span>}
       </div>
 

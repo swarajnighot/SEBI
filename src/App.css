@@ -129,6 +129,21 @@ body {
   margin-bottom: 0.875rem;
 }
 
+.title-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sidebar-logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 1px rgba(239,223,187,0.2);
+}
+
 .title-block h1 {
   font-size: 1rem;
   font-weight: 700;
@@ -1420,6 +1435,15 @@ body {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+  }
+
+  .mobile-topbar-logo {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    box-shadow: 0 0 0 1px rgba(239,223,187,0.25);
   }
 
   .mobile-topbar-title {

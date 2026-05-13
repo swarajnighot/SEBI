@@ -462,8 +462,9 @@ function App() {
       {/* Mobile top bar — hidden on desktop via CSS */}
       <div className="mobile-topbar" role="banner">
         <div className="mobile-topbar-brand">
-          <span className={`mobile-status-dot ${isRunning ? 'running' : 'stopped'}`} aria-hidden="true" />
+          <img src="/sebiicon.png" alt="SEBI" className="mobile-topbar-logo" />
           <span className="mobile-topbar-title">SEBI Monitor</span>
+          <span className={`mobile-status-dot ${isRunning ? 'running' : 'stopped'}`} aria-hidden="true" />
         </div>
         <div className="mobile-topbar-right">
           {currentUser && (
