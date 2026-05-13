@@ -12,6 +12,8 @@ html, body {
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Prevent overscroll rubber-banding on iOS */
+  overscroll-behavior: none;
 }
 
 #root {
@@ -19,4 +21,9 @@ html, body {
   height: 100%;
   display: flex;
   flex-direction: column;
+}
+
+/* Enable smooth scrolling in scrollable regions */
+@media (max-width: 768px) {
+  * { -webkit-tap-highlight-color: transparent; }
 }

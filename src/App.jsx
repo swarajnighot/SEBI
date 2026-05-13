@@ -79,6 +79,8 @@ function App() {
   const [filterScraped, setFilterScraped] = useState(false);
   const [filterMatchedOnly, setFilterMatchedOnly] = useState(false);
 
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   // Refs for timers
   const timeoutIdRef = useRef(null);
   const countdownIdRef = useRef(null);
@@ -457,8 +459,59 @@ function App() {
 
   return (
     <div className="dashboard-layout">
+      {/* Mobile top bar — hidden on desktop via CSS */}
+      <div className="mobile-topbar" role="banner">
+        <div className="mobile-topbar-brand">
+          <span className={`mobile-status-dot ${isRunning ? 'running' : 'stopped'}`} aria-hidden="true" />
+          <span className="mobile-topbar-title">SEBI Monitor</span>
+        </div>
+        <div className="mobile-topbar-right">
+          {currentUser && (
+            <div className="mobile-user-avatar" aria-hidden="true">
+              {currentUser.username.charAt(0).toUpperCase()}
+            </div>
+          )}
+          <button
+            className="mobile-menu-btn"
+            onClick={() => setSidebarOpen(s => !s)}
+            aria-label={sidebarOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={sidebarOpen}
+          >
+            {sidebarOpen ? (
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+                <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+              </svg>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Sidebar overlay backdrop — mobile only */}
+      {sidebarOpen && (
+        <div
+          className="sidebar-overlay"
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
       {/* Sidebar Area */}
-      <aside className="sidebar">
+      <aside className={`sidebar${sidebarOpen ? ' is-open' : ''}`}>
+        {/* Mobile close button inside sidebar */}
+        <button
+          className="mobile-sidebar-close"
+          onClick={() => setSidebarOpen(false)}
+          aria-label="Close navigation"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+          Close
+        </button>
         <div className="sidebar-scroll">
           <Header
             isRunning={isRunning}
