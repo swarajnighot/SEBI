@@ -1,0 +1,18 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Gradient Background -->
+  <circle cx="256" cy="256" r="250" fill="#f4f7f9" />
+  <circle cx="256" cy="256" r="230" stroke="#00529B" stroke-width="2" fill="none" stroke-dasharray="10,10" />
+
+  <!-- Connection Nodes -->
+  <circle cx="256" cy="50" r="15" fill="#00529B" />
+  <circle cx="462" cy="256" r="15" fill="#00529B" />
+  <circle cx="256" cy="462" r="15" fill="#00529B" />
+  <circle cx="50" cy="256" r="15" fill="#00529B" />
+
+  <!-- Center Plate -->
+  <circle cx="256" cy="256" r="140" fill="#00529B" />
+  <text x="50%" y="58%" text-anchor="middle" fill="white" font-family="Impact" font-size="100">SEBI</text>
+
+  <!-- Radar Sweep Effect -->
+  <path d="M256 116 A 140 140 0 0 1 396 256" fill="none" stroke="#00529B" stroke-width="15" stroke-linecap="round" opacity="0.5" />
+</svg>
