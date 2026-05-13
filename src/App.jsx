@@ -53,7 +53,7 @@ function App() {
 
   // State
   const [items, setItems] = useState([]);
-  const [knownLinks, setKnownLinks] = useState(new Set());
+  const knownLinksRef = useRef(new Set());
   const [isRunning, setIsRunning] = useState(false);
   const [checkTime, setCheckTime] = useState('19:00');
   const [countdownSec, setCountdownSec] = useState(0);
@@ -336,43 +336,39 @@ function App() {
         .flatMap(r => r.value);
 
       const combined = [...rss, ...scraped].filter(i => !EXCLUDED_CATS.has(i.cat));
-      
-      setItems(prevItems => {
-        const newKnown = new Set(knownLinks);
-        const newFound = [];
-        const initialScanItems = [];
-        const updatedItems = [...prevItems];
 
-        combined.forEach(item => {
-          if (!newKnown.has(item.link)) {
-            newKnown.add(item.link);
-            const isNew = !isFirstRunRef.current;
-            const newItem = { ...item, isNew };
-            updatedItems.unshift(newItem);
-            if (isFirstRunRef.current) initialScanItems.push(newItem);
-            if (isNew) {
-              newFound.push(newItem);
-            }
-          }
-        });
-
-        if (isFirstRunRef.current) {
-          processNewItemsForAIF(initialScanItems, toSearchTerms);
+      // Deduplicate synchronously in function body — never inside a state updater,
+      // because React Strict Mode calls updaters twice which would corrupt the ref.
+      const newItems = [];
+      const initialScanItems = [];
+      for (const item of combined) {
+        if (!knownLinksRef.current.has(item.link)) {
+          knownLinksRef.current.add(item.link);
+          const newItem = { ...item, isNew: !isFirstRunRef.current };
+          newItems.push(newItem);
+          if (isFirstRunRef.current) initialScanItems.push(newItem);
         }
+      }
 
-        if (newFound.length > 0) {
-          setNewCount(prev => prev + newFound.length);
-          setToast({ title: `${newFound.length} New Items`, text: newFound[0].title });
-          if ("Notification" in window && Notification.permission === "granted") {
-            new Notification("SEBI Update", { body: `${newFound.length} new items found.` });
-          }
-          processNewItemsForAIF(newFound, toSearchTerms);
+      if (isFirstRunRef.current && initialScanItems.length > 0) {
+        processNewItemsForAIF(initialScanItems, toSearchTerms);
+      }
+
+      const newFound = newItems.filter(i => i.isNew);
+      if (newFound.length > 0) {
+        setNewCount(prev => prev + newFound.length);
+        setToast({ title: `${newFound.length} New Items`, text: newFound[0].title });
+        if ("Notification" in window && Notification.permission === "granted") {
+          new Notification("SEBI Update", { body: `${newFound.length} new items found.` });
         }
+        processNewItemsForAIF(newFound, toSearchTerms);
+      }
 
-        setKnownLinks(newKnown);
-        isFirstRunRef.current = false;
-        return updatedItems;
-      });
+      if (newItems.length > 0) {
+        setItems(prev => [...newItems, ...prev]);
+      }
+
+      isFirstRunRef.current = false;
     } catch (err) {}
     
     if (isRunning) {
@@ -421,7 +417,7 @@ function App() {
 
   const clearAll = () => {
     setItems([]);
-    setKnownLinks(new Set());
+    knownLinksRef.current = new Set();
     setNewCount(0);
     setChecksRun(0);
     isFirstRunRef.current = true;
