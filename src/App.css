@@ -834,6 +834,102 @@ body {
   letter-spacing: 0.02em;
 }
 
+/* ── Apple Intelligence Viewport Ring ────────────── */
+
+@property --ai-scan-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes ai-scan-rotate {
+  to { --ai-scan-angle: 360deg; }
+}
+
+@keyframes ai-ring-appear {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/*
+  Two-layer Apple Intelligence ring:
+  ::before → soft glow that melts inward (4-strip gradient mask + SVG wave filter)
+  ::after  → crisp 1.5px hard edge at the screen boundary
+*/
+.ai-viewport-ring {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: 14px;          /* rounds the outer edge of both ring layers */
+  animation: ai-ring-appear 0.35s ease forwards;
+}
+
+/* ── Layer 1: wavy, melting aurora glow ── */
+.ai-viewport-ring::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  /*
+    SEBI palette arc: deep mahogany → wine red → rose wine →
+    amber gold → muted gold → warm parchment glow (comet head) →
+    back through gold → amber → dark wine → mahogany.
+    Feels like candlelight sweeping across old legal velvet.
+  */
+  background: conic-gradient(
+    from var(--ai-scan-angle),
+    #3D1A1E  0%,
+    #722F37  16%,
+    #8B3A42  30%,
+    #b07d2a  44%,
+    #C4A882  55%,
+    #F3DFD1  63%,
+    #C4A882  70%,
+    #b07d2a  80%,
+    #5A2328  91%,
+    #3D1A1E 100%
+  );
+  -webkit-mask:
+    linear-gradient(to bottom, #fff, transparent 20px) top    / 100% 20px no-repeat,
+    linear-gradient(to top,    #fff, transparent 20px) bottom / 100% 20px no-repeat,
+    linear-gradient(to right,  #fff, transparent 20px) left   / 20px 100% no-repeat,
+    linear-gradient(to left,   #fff, transparent 20px) right  / 20px 100% no-repeat;
+  mask:
+    linear-gradient(to bottom, #fff, transparent 20px) top    / 100% 20px no-repeat,
+    linear-gradient(to top,    #fff, transparent 20px) bottom / 100% 20px no-repeat,
+    linear-gradient(to right,  #fff, transparent 20px) left   / 20px 100% no-repeat,
+    linear-gradient(to left,   #fff, transparent 20px) right  / 20px 100% no-repeat;
+  filter: url(#ai-wave);
+  animation: ai-scan-rotate 4s linear infinite;
+}
+
+/* ── Layer 2: crisp 3px ring pinned to the screen edge ── */
+.ai-viewport-ring::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  padding: 3px;
+  background: conic-gradient(
+    from var(--ai-scan-angle),
+    #3D1A1E  0%,
+    #722F37  16%,
+    #8B3A42  30%,
+    #b07d2a  44%,
+    #C4A882  55%,
+    #F3DFD1  63%,
+    #C4A882  70%,
+    #b07d2a  80%,
+    #5A2328  91%,
+    #3D1A1E 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  animation: ai-scan-rotate 4s linear infinite;
+}
+
 /* ── Login Screen ─────────────────────────────────── */
 
 .login-bg {

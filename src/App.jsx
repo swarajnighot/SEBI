@@ -310,19 +310,21 @@ function App() {
 
   const scanItemForAIF = useCallback(async (item, searchTerms) => {
     setScanningCount(prev => prev + 1);
+    setItems(prev => prev.map(i => i.link === item.link ? { ...i, scanning: true } : i));
+    let updates = { scanning: false };
     try {
       const pdfUrl = await resolvePdfUrl(item.link);
-      if (!pdfUrl) return;
-
-      const arrayBuffer = await fetchPdfArrayBuffer(pdfUrl);
-
-      const toSection = await extractToSection(arrayBuffer);
-      const matched = toSection ? matchesAny(toSection, searchTerms) : false;
-      setItems(prev => prev.map(i =>
-        i.link === item.link ? { ...i, toSection: toSection || '', aifTagged: matched } : i
-      ));
+      if (pdfUrl) {
+        const arrayBuffer = await fetchPdfArrayBuffer(pdfUrl);
+        const toSection = await extractToSection(arrayBuffer);
+        const matched = toSection ? matchesAny(toSection, searchTerms) : false;
+        updates = { scanning: false, toSection: toSection || '', aifTagged: matched };
+      }
     } catch (e) { /* silent background scan */ }
-    finally { setScanningCount(prev => prev - 1); }
+    finally {
+      setScanningCount(prev => prev - 1);
+      setItems(prev => prev.map(i => i.link === item.link ? { ...i, ...updates } : i));
+    }
   }, []);
 
   const processNewItemsForAIF = useCallback((newItems, searchTerms) => {
@@ -471,6 +473,36 @@ function App() {
 
   return (
     <div className="dashboard-layout">
+      {/* SVG wave-distortion filter — hidden, reused by .ai-viewport-ring::before */}
+      <svg aria-hidden="true" focusable="false"
+           style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }}>
+        <defs>
+          <filter id="ai-wave" x="-5%" y="-5%" width="110%" height="110%">
+            <feTurbulence type="fractalNoise" baseFrequency="0.018 0.065"
+                          numOctaves="3" seed="8" result="noise">
+              <animate attributeName="baseFrequency"
+                       values="0.018 0.065;0.018 0.115;0.018 0.065"
+                       dur="6s" repeatCount="indefinite"
+                       calcMode="spline"
+                       keySplines="0.4 0 0.6 1;0.4 0 0.6 1" />
+            </feTurbulence>
+            <feDisplacementMap in="SourceGraphic" in2="noise"
+                               xChannelSelector="R" yChannelSelector="G"
+                               result="displaced">
+              <animate attributeName="scale"
+                       values="8;16;8"
+                       dur="4s" repeatCount="indefinite"
+                       calcMode="spline"
+                       keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
+            </feDisplacementMap>
+            <feGaussianBlur in="displaced" stdDeviation="4" />
+          </filter>
+        </defs>
+      </svg>
+
+      {scanningCount > 0 && (
+        <div className="ai-viewport-ring" aria-hidden="true" />
+      )}
       {/* Mobile top bar — hidden on desktop via CSS */}
       <div className="mobile-topbar" role="banner">
         <div className="mobile-topbar-brand">
