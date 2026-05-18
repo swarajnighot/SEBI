@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import Header from './components/Header';
 import FilterBar from './components/FilterBar';
 import ProgressBar from './components/ProgressBar';
@@ -33,6 +34,14 @@ const SCRAPE_CATEGORIES = [
 ];
 
 const PDF_SIGNATURE = '%PDF-';
+
+// Normalises date strings like "08 May, 2026 +0530" or "5 May 2026" into a timestamp
+const parseItemDate = (dateStr) => {
+  if (!dateStr) return NaN;
+  const cleaned = dateStr.replace(/[+-]\d{4}\s*$/, '').replace(/,/g, '').trim();
+  const d = new Date(cleaned);
+  return isNaN(d.getTime()) ? NaN : d.getTime();
+};
 
 function App() {
   // Auth
@@ -76,8 +85,7 @@ function App() {
   const [filterCat, setFilterCat] = useState('all');
   const [filterSearch, setFilterSearch] = useState('');
   const [filterNewOnly, setFilterNewOnly] = useState(false);
-  const [filterScraped, setFilterScraped] = useState(false);
-  const [filterMatchedOnly, setFilterMatchedOnly] = useState(false);
+  const [filterMatchedOnly, setFilterMatchedOnly] = useState(true);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -305,8 +313,13 @@ function App() {
 
   // ---------- AIF Background Scanner ----------
 
-  const matchesAny = (toSection, terms) =>
-    terms.some(t => t.trim().length > 0 && toSection.toLowerCase().includes(t.trim().toLowerCase()));
+  const matchesAny = (toSection, terms) => {
+    const normalizedTo = toSection.replace(/\s+/g, ' ').toLowerCase();
+    return terms.some(t => {
+      const term = t.trim().replace(/\s+/g, ' ').toLowerCase();
+      return term.length > 0 && normalizedTo.includes(term);
+    });
+  };
 
   const scanItemForAIF = useCallback(async (item, searchTerms) => {
     setScanningCount(prev => prev + 1);
@@ -360,6 +373,9 @@ function App() {
       const newItems = [];
       const initialScanItems = [];
       for (const item of combined) {
+        const ts = parseItemDate(item.pubDate);
+        if (!isNaN(ts) && new Date(ts).getFullYear() < 2025) continue; // Skip old items to prevent dead links
+
         if (!knownLinksRef.current.has(item.link)) {
           knownLinksRef.current.add(item.link);
           const newItem = { ...item, isNew: !isFirstRunRef.current };
@@ -441,20 +457,11 @@ function App() {
     isFirstRunRef.current = true;
   };
 
-  // Normalises date strings like "08 May, 2026 +0530" or "5 May 2026" into a timestamp
-  const parseItemDate = (dateStr) => {
-    if (!dateStr) return NaN;
-    const cleaned = dateStr.replace(/[+-]\d{4}\s*$/, '').replace(/,/g, '').trim();
-    const d = new Date(cleaned);
-    return isNaN(d.getTime()) ? NaN : d.getTime();
-  };
-
   // Filtered view — only 2025 onwards, sorted latest first
   const filteredItems = items
     .filter(it => {
       if (filterCat !== 'all' && it.cat !== filterCat) return false;
       if (filterNewOnly && !it.isNew) return false;
-      if (!filterScraped && it.source === 'scrape') return false;
       if (filterSearch && !it.title.toLowerCase().includes(filterSearch.toLowerCase())) return false;
       if (filterMatchedOnly && !it.aifTagged) return false;
       const ts = parseItemDate(it.pubDate);
@@ -473,36 +480,18 @@ function App() {
 
   return (
     <div className="dashboard-layout">
-      {/* SVG wave-distortion filter — hidden, reused by .ai-viewport-ring::before */}
-      <svg aria-hidden="true" focusable="false"
-           style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }}>
-        <defs>
-          <filter id="ai-wave" x="-5%" y="-5%" width="110%" height="110%">
-            <feTurbulence type="fractalNoise" baseFrequency="0.018 0.065"
-                          numOctaves="3" seed="8" result="noise">
-              <animate attributeName="baseFrequency"
-                       values="0.018 0.065;0.018 0.115;0.018 0.065"
-                       dur="6s" repeatCount="indefinite"
-                       calcMode="spline"
-                       keySplines="0.4 0 0.6 1;0.4 0 0.6 1" />
-            </feTurbulence>
-            <feDisplacementMap in="SourceGraphic" in2="noise"
-                               xChannelSelector="R" yChannelSelector="G"
-                               result="displaced">
-              <animate attributeName="scale"
-                       values="8;16;8"
-                       dur="4s" repeatCount="indefinite"
-                       calcMode="spline"
-                       keySplines="0.45 0 0.55 1;0.45 0 0.55 1" />
-            </feDisplacementMap>
-            <feGaussianBlur in="displaced" stdDeviation="4" />
-          </filter>
-        </defs>
-      </svg>
-
-      {scanningCount > 0 && (
-        <div className="ai-viewport-ring" aria-hidden="true" />
-      )}
+      <AnimatePresence>
+        {scanningCount > 0 && (
+          <motion.div
+            className="ai-viewport-ring"
+            aria-hidden="true"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
+          />
+        )}
+      </AnimatePresence>
       {/* Mobile top bar — hidden on desktop via CSS */}
       <div className="mobile-topbar" role="banner">
         <div className="mobile-topbar-brand">
@@ -596,7 +585,6 @@ function App() {
           filterCat={filterCat} setFilterCat={setFilterCat}
           filterSearch={filterSearch} setFilterSearch={setFilterSearch}
           filterNewOnly={filterNewOnly} setFilterNewOnly={setFilterNewOnly}
-          filterScraped={filterScraped} setFilterScraped={setFilterScraped}
           filterMatchedOnly={filterMatchedOnly} setFilterMatchedOnly={setFilterMatchedOnly}
           checkTime={checkTime} setCheckTime={setCheckTime}
           onCheckNow={handleCheckNow} isCheckingNow={isCheckingNow}
@@ -616,10 +604,6 @@ function App() {
         <section className="feed-section">
           <header className="section-header">
             <h2 className="section-title">📋 Feed Items ({filteredItems.length})</h2>
-            <div className="source-legend">
-              <span className="dot rss"></span> RSS (Blue Outline)
-              <span className="dot scrape"></span> Scraped (Yellow Outline)
-            </div>
           </header>
           
           <div id="feed-list">

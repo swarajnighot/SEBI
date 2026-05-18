@@ -15,7 +15,7 @@ function FeedItem({ item, onViewPdf }) {
 
   return (
     <article
-      className={`feed-item cat-${item.cat} src-${item.source} ${item.isNew ? 'is-new' : ''} ${item.aifTagged ? 'aif-tagged' : ''}`}
+      className={`feed-item cat-${item.cat} ${item.isNew ? 'is-new' : ''} ${item.aifTagged ? 'aif-tagged' : ''}`}
       aria-label={item.title}
     >
       <span className={`cat-dot cat-dot-${item.cat}`} aria-hidden="true" title={catLabel} />
@@ -31,7 +31,6 @@ function FeedItem({ item, onViewPdf }) {
 
         <div className="meta">
           <span className="badge badge-cat">{catLabel}</span>
-          <span className={`badge badge-source-${item.source}`}>{item.source}</span>
           <span className="date-tag">{dateStr}</span>
 
           <div className="action-buttons">

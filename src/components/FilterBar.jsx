@@ -1,7 +1,7 @@
 import React from 'react';
 
 function FilterBar({ filterCat, setFilterCat, filterSearch, setFilterSearch,
-  filterNewOnly, setFilterNewOnly, filterScraped, setFilterScraped,
+  filterNewOnly, setFilterNewOnly,
   filterMatchedOnly, setFilterMatchedOnly, checkTime, setCheckTime,
   onCheckNow, isCheckingNow, isRunning, onStart, onStop }) {
   return (
@@ -75,48 +75,7 @@ function FilterBar({ filterCat, setFilterCat, filterSearch, setFilterSearch,
         </div>
       </div>
 
-      <div className="filter-divider" aria-hidden="true" />
 
-      {/* Toggles group — display:contents on desktop (transparent to flex),
-           display:flex on mobile (becomes its own row) */}
-      <div className="filter-toggles-group">
-        {/* New only */}
-        <div className="filter-item filter-item-toggle">
-          <label className="filter-toggle-label" htmlFor="filter-new">
-            <span className="toggle-switch">
-              <input id="filter-new" type="checkbox" checked={filterNewOnly} onChange={e => setFilterNewOnly(e.target.checked)} />
-              <span className="toggle-track"><span className="toggle-thumb" /></span>
-            </span>
-            New only
-          </label>
-        </div>
-
-        <div className="filter-divider filter-divider-inner" aria-hidden="true" />
-
-        {/* Scraped */}
-        <div className="filter-item filter-item-toggle">
-          <label className="filter-toggle-label" htmlFor="filter-scraped">
-            <span className="toggle-switch">
-              <input id="filter-scraped" type="checkbox" checked={filterScraped} onChange={e => setFilterScraped(e.target.checked)} />
-              <span className="toggle-track"><span className="toggle-thumb" /></span>
-            </span>
-            Scraped
-          </label>
-        </div>
-
-        <div className="filter-divider filter-divider-inner" aria-hidden="true" />
-
-        {/* Matched only */}
-        <div className="filter-item filter-item-toggle">
-          <label className="filter-toggle-label" htmlFor="filter-matched">
-            <span className="toggle-switch">
-              <input id="filter-matched" type="checkbox" checked={filterMatchedOnly} onChange={e => setFilterMatchedOnly(e.target.checked)} />
-              <span className="toggle-track"><span className="toggle-thumb" /></span>
-            </span>
-            Matched
-          </label>
-        </div>
-      </div>
 
       <div className="filter-divider" aria-hidden="true" />
 

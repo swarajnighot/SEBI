@@ -5,9 +5,19 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url
 ).toString();
 
+pdfjsLib.GlobalWorkerOptions.verbosity = 0; // hide warnings
+
 // Extracts text from the first 2 pages of a PDF ArrayBuffer
 async function extractText(arrayBuffer) {
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const pdfjsVersion = pdfjsLib.version;
+  const pdf = await pdfjsLib.getDocument({ 
+    data: arrayBuffer,
+    standardFontDataUrl: `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/standard_fonts/`,
+    cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/cmaps/`,
+    cMapPacked: true,
+    verbosity: 0,
+    disableFontFace: true,
+  }).promise;
   const maxPages = Math.min(pdf.numPages, 2);
   let text = '';
   for (let i = 1; i <= maxPages; i++) {
